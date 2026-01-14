@@ -1,0 +1,6 @@
+# Hardware
+hardware\main\secret.h
+
+# Cloud
+cloud\credentials.json
+cloud\serviceAccountKey.json
