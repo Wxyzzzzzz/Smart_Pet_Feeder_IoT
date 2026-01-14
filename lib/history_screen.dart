@@ -1,93 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'services/firestore_service.dart';
+import 'models/feeding_log.dart';
 
 class HistoryScreen extends StatelessWidget {
-  // --- MOCK FEEDING HISTORY LOGS ---
-  // Enhanced with more details for system reliability tracking
-  final List<Map<String, String>> logs = [
-    {
-      'date': 'Jan 14, 2026',
-      'time': '08:00 AM',
-      'type': 'Scheduled',
-      'portion': '20g',
-      'status': 'Success',
-      'duration': '45 sec'
-    },
-    {
-      'date': 'Jan 14, 2026',
-      'time': '06:30 AM',
-      'type': 'Manual',
-      'portion': '15g',
-      'status': 'Success',
-      'duration': '32 sec'
-    },
-    {
-      'date': 'Jan 13, 2026',
-      'time': '06:30 PM',
-      'type': 'Scheduled',
-      'portion': '25g',
-      'status': 'Success',
-      'duration': '51 sec'
-    },
-    {
-      'date': 'Jan 13, 2026',
-      'time': '01:00 PM',
-      'type': 'Scheduled',
-      'portion': '20g',
-      'status': 'Success',
-      'duration': '42 sec'
-    },
-    {
-      'date': 'Jan 13, 2026',
-      'time': '08:00 AM',
-      'type': 'Scheduled',
-      'portion': '20g',
-      'status': 'Success',
-      'duration': '48 sec'
-    },
-    {
-      'date': 'Jan 12, 2026',
-      'time': '06:30 PM',
-      'type': 'Scheduled',
-      'portion': '25g',
-      'status': 'Success',
-      'duration': '55 sec'
-    },
-    {
-      'date': 'Jan 12, 2026',
-      'time': '01:00 PM',
-      'type': 'Manual',
-      'portion': '10g',
-      'status': 'Success',
-      'duration': '28 sec'
-    },
-    {
-      'date': 'Jan 12, 2026',
-      'time': '08:00 AM',
-      'type': 'Scheduled',
-      'portion': '20g',
-      'status': 'Failed',
-      'duration': '0 sec',
-      'error': 'Container Empty'
-    },
-    {
-      'date': 'Jan 11, 2026',
-      'time': '06:30 PM',
-      'type': 'Scheduled',
-      'portion': '25g',
-      'status': 'Success',
-      'duration': '53 sec'
-    },
-  ];
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   Widget build(BuildContext context) {
-    // Calculate statistics
-    int totalFeedings = logs.length;
-    int successfulFeedings = logs.where((log) => log['status'] == 'Success').length;
-    int scheduledFeedings = logs.where((log) => log['type'] == 'Scheduled').length;
-    int manualFeedings = logs.where((log) => log['type'] == 'Manual').length;
-    double successRate = (successfulFeedings / totalFeedings * 100);
-
     return Scaffold(
       appBar: AppBar(
         title: Text("Feeding History 📜"),
@@ -95,168 +15,227 @@ class HistoryScreen extends StatelessWidget {
           IconButton(
             icon: Icon(Icons.filter_list),
             onPressed: () {
-              // Placeholder for filter functionality
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Filter feature coming soon!')),
+              );
             },
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Statistics Summary Card
-          Card(
-            margin: EdgeInsets.all(15),
-            color: Colors.deepOrange[50],
-            child: Padding(
-              padding: EdgeInsets.all(15),
+      body: StreamBuilder<List<FeedingLog>>(
+        stream: _firestoreService.getFeedingLogs(limit: 50),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'System Reliability',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildStatItem('Total', '$totalFeedings', Icons.list),
-                      _buildStatItem('Success', '$successfulFeedings', Icons.check_circle, Colors.green),
-                      _buildStatItem('Success Rate', '${successRate.toStringAsFixed(1)}%', Icons.analytics, Colors.blue),
-                    ],
-                  ),
-                  SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildStatItem('Scheduled', '$scheduledFeedings', Icons.schedule, Colors.purple),
-                      _buildStatItem('Manual', '$manualFeedings', Icons.touch_app, Colors.orange),
-                    ],
-                  ),
+                  Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  SizedBox(height: 16),
+                  Text('Error loading logs', style: TextStyle(fontSize: 18)),
+                  SizedBox(height: 8),
+                  Text(snapshot.error.toString(),
+                      style: TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),
-            ),
-          ),
-          
-          // Log entries header
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-            child: Row(
-              children: [
-                Text(
-                  'Audit Trail',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700]),
-                ),
-                Spacer(),
-                Text(
-                  '${logs.length} entries',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-          
-          // Scrollable log list
-          Expanded(
-            child: ListView.builder(
-              padding: EdgeInsets.symmetric(horizontal: 15),
-              itemCount: logs.length,
-              itemBuilder: (context, index) {
-                final log = logs[index];
-                bool isSuccess = log['status'] == 'Success';
-                bool isScheduled = log['type'] == 'Scheduled';
-                
-                return Card(
-                  margin: EdgeInsets.only(bottom: 10),
-                  elevation: 2,
-                  child: ExpansionTile(
-                    leading: CircleAvatar(
-                      backgroundColor: isSuccess 
-                          ? (isScheduled ? Colors.blue[100] : Colors.orange[100])
-                          : Colors.red[100],
-                      child: Icon(
-                        isSuccess
-                            ? (isScheduled ? Icons.alarm : Icons.touch_app)
-                            : Icons.error,
-                        color: isSuccess
-                            ? (isScheduled ? Colors.blue : Colors.orange)
-                            : Colors.red,
-                      ),
-                    ),
-                    title: Row(
-                      children: [
-                        Text(
-                          log['type']!,
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(width: 8),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isSuccess ? Colors.green : Colors.red,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            log['status']!,
-                            style: TextStyle(color: Colors.white, fontSize: 10),
-                          ),
-                        ),
-                      ],
-                    ),
-                    subtitle: Text('${log['date']} • ${log['time']}'),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          log['portion']!,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Colors.deepOrange,
-                          ),
-                        ),
-                        Text(
-                          log['duration']!,
-                          style: TextStyle(fontSize: 10, color: Colors.grey),
-                        ),
-                      ],
-                    ),
+            );
+          }
+
+          final logs = snapshot.data ?? [];
+
+          if (logs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.history, size: 48, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text('No feeding logs yet',
+                      style: TextStyle(fontSize: 18)),
+                  SizedBox(height: 8),
+                  Text('Logs will appear here after feeding',
+                      style: TextStyle(color: Colors.grey)),
+                ],
+              ),
+            );
+          }
+
+          // Calculate statistics
+          int totalFeedings = logs.length;
+          int scheduledFeedings =
+              logs.where((log) => log.source == 'scheduled').length;
+          int manualFeedings =
+              logs.where((log) => log.source == 'manually').length;
+
+          return Column(
+            children: [
+              // Statistics Summary Card
+              Card(
+                margin: EdgeInsets.all(15),
+                color: Colors.deepOrange[50],
+                child: Padding(
+                  padding: EdgeInsets.all(15),
+                  child: Column(
                     children: [
-                      Padding(
-                        padding: EdgeInsets.all(15),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      Text(
+                        'System Reliability',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildStatItem(
+                              'Total', '$totalFeedings', Icons.list),
+                          _buildStatItem('Scheduled', '$scheduledFeedings',
+                              Icons.schedule, Colors.purple),
+                          _buildStatItem('Manual', '$manualFeedings',
+                              Icons.touch_app, Colors.orange),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Log entries header
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                child: Row(
+                  children: [
+                    Text(
+                      'Audit Trail',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700]),
+                    ),
+                    Spacer(),
+                    Text(
+                      '${logs.length} entries',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Scrollable log list
+              Expanded(
+                child: ListView.builder(
+                  padding: EdgeInsets.symmetric(horizontal: 15),
+                  itemCount: logs.length,
+                  itemBuilder: (context, index) {
+                    final log = logs[index];
+                    bool isScheduled = log.source == 'scheduled';
+
+                    return Card(
+                      margin: EdgeInsets.only(bottom: 10),
+                      elevation: 2,
+                      child: ExpansionTile(
+                        leading: CircleAvatar(
+                          backgroundColor: isScheduled
+                              ? Colors.blue[100]
+                              : Colors.orange[100],
+                          child: Icon(
+                            isScheduled ? Icons.alarm : Icons.touch_app,
+                            color: isScheduled ? Colors.blue : Colors.orange,
+                          ),
+                        ),
+                        title: Row(
                           children: [
-                            _buildDetailRow('Date & Time', '${log['date']} at ${log['time']}'),
-                            _buildDetailRow('Type', log['type']!),
-                            _buildDetailRow('Portion Dispensed', log['portion']!),
-                            _buildDetailRow('Duration', log['duration']!),
-                            _buildDetailRow('Status', log['status']!),
-                            if (log.containsKey('error'))
-                              _buildDetailRow('Error', log['error']!, isError: true),
-                            SizedBox(height: 10),
                             Text(
-                              'Servo Motor Confirmation: ${isSuccess ? "✓ Completed" : "✗ Failed"}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontStyle: FontStyle.italic,
-                                color: isSuccess ? Colors.green : Colors.red,
+                              isScheduled ? 'Scheduled' : 'Manual',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(width: 8),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                'Success',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 10),
                               ),
                             ),
                           ],
                         ),
+                        subtitle: Text(
+                          DateFormat('MMM dd, yyyy • hh:mm a')
+                              .format(log.timestamp),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'Food: ${log.foodRemaining}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.deepOrange,
+                              ),
+                            ),
+                            Text(
+                              'remaining',
+                              style:
+                                  TextStyle(fontSize: 10, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.all(15),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildDetailRow(
+                                    'Date & Time',
+                                    DateFormat('MMMM dd, yyyy • hh:mm:ss a')
+                                        .format(log.timestamp)),
+                                _buildDetailRow('Device ID', log.deviceId),
+                                _buildDetailRow('Source', log.source),
+                                _buildDetailRow('Food Remaining',
+                                    '${log.foodRemaining}'),
+                                _buildDetailRow(
+                                    'Last Seen',
+                                    DateFormat('hh:mm:ss a')
+                                        .format(log.lastSeen)),
+                                SizedBox(height: 10),
+                                Text(
+                                  'Servo Motor Confirmation: ✓ Completed',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, [Color? color]) {
+  Widget _buildStatItem(String label, String value, IconData icon,
+      [Color? color]) {
     return Column(
       children: [
         Icon(icon, color: color ?? Colors.deepOrange, size: 24),
