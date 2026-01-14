@@ -42,3 +42,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# Hardware
+/hardware/main/secret.h
+
+# Cloud
+/cloud/credentials.json
+/cloud/serviceAccountKey.json
