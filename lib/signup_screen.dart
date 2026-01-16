@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'pet_setup_screen.dart';
 import 'services/auth_service.dart';
+import 'config/app_colors.dart';
 
 class SignUpScreen extends StatefulWidget {
   @override
@@ -33,7 +34,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Please accept the terms and conditions'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -41,19 +42,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      
+
       try {
         await _authService.signUpWithEmailPassword(
           _emailController.text,
           _passwordController.text,
           _nameController.text,
         );
-        
+
         // Navigate to pet setup screen after successful signup
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => PetSetupScreen(isFromSignup: true)),
+            MaterialPageRoute(
+                builder: (context) => PetSetupScreen(isFromSignup: true)),
           );
         }
       } catch (e) {
@@ -61,7 +63,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(e.toString()),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -82,7 +84,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.deepOrange[400]!, Colors.deepOrange[700]!],
+            colors: AppColors.earthGradient,
           ),
         ),
         child: SafeArea(
@@ -109,11 +111,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     child: Icon(
                       Icons.pets,
                       size: 60,
-                      color: Colors.deepOrange,
+                      color: AppColors.primaryDark,
                     ),
                   ),
                   SizedBox(height: 20),
-                  
+
                   // Title
                   Text(
                     'Create Account',
@@ -132,7 +134,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
                   SizedBox(height: 30),
-                  
+
                   // Sign Up Form Card
                   Card(
                     elevation: 8,
@@ -150,13 +152,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               controller: _nameController,
                               decoration: InputDecoration(
                                 labelText: 'Full Name',
-                                prefixIcon: Icon(Icons.person, color: Colors.deepOrange),
+                                prefixIcon: Icon(Icons.person,
+                                    color: AppColors.primaryDark),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.deepOrange, width: 2),
+                                  borderSide: BorderSide(
+                                      color: AppColors.primaryDark, width: 2),
                                 ),
                               ),
                               validator: (value) {
@@ -167,20 +171,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               },
                             ),
                             SizedBox(height: 20),
-                            
+
                             // Email Field
                             TextFormField(
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
                               decoration: InputDecoration(
                                 labelText: 'Email',
-                                prefixIcon: Icon(Icons.email, color: Colors.deepOrange),
+                                prefixIcon: Icon(Icons.email,
+                                    color: AppColors.primaryDark),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.deepOrange, width: 2),
+                                  borderSide: BorderSide(
+                                      color: AppColors.primaryDark, width: 2),
                                 ),
                               ),
                               validator: (value) {
@@ -194,21 +200,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               },
                             ),
                             SizedBox(height: 20),
-                            
+
                             // Password Field
                             TextFormField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
                               decoration: InputDecoration(
                                 labelText: 'Password',
-                                prefixIcon: Icon(Icons.lock, color: Colors.deepOrange),
+                                prefixIcon: Icon(Icons.lock,
+                                    color: AppColors.primaryDark),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                    _obscurePassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
                                     color: Colors.grey,
                                   ),
                                   onPressed: () {
-                                    setState(() => _obscurePassword = !_obscurePassword);
+                                    setState(() =>
+                                        _obscurePassword = !_obscurePassword);
                                   },
                                 ),
                                 border: OutlineInputBorder(
@@ -216,7 +226,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.deepOrange, width: 2),
+                                  borderSide: BorderSide(
+                                      color: AppColors.primaryDark, width: 2),
                                 ),
                               ),
                               validator: (value) {
@@ -230,21 +241,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               },
                             ),
                             SizedBox(height: 20),
-                            
+
                             // Confirm Password Field
                             TextFormField(
                               controller: _confirmPasswordController,
                               obscureText: _obscureConfirmPassword,
                               decoration: InputDecoration(
                                 labelText: 'Confirm Password',
-                                prefixIcon: Icon(Icons.lock_outline, color: Colors.deepOrange),
+                                prefixIcon: Icon(Icons.lock_outline,
+                                    color: AppColors.primaryDark),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                                    _obscureConfirmPassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
                                     color: Colors.grey,
                                   ),
                                   onPressed: () {
-                                    setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                                    setState(() => _obscureConfirmPassword =
+                                        !_obscureConfirmPassword);
                                   },
                                 ),
                                 border: OutlineInputBorder(
@@ -252,7 +267,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.deepOrange, width: 2),
+                                  borderSide: BorderSide(
+                                      color: AppColors.primaryDark, width: 2),
                                 ),
                               ),
                               validator: (value) {
@@ -266,7 +282,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               },
                             ),
                             SizedBox(height: 15),
-                            
+
                             // Terms Checkbox
                             Row(
                               children: [
@@ -275,7 +291,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   onChanged: (value) {
                                     setState(() => _acceptTerms = value!);
                                   },
-                                  activeColor: Colors.deepOrange,
+                                  activeColor: AppColors.primaryDark,
                                 ),
                                 Expanded(
                                   child: Text(
@@ -286,7 +302,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ],
                             ),
                             SizedBox(height: 20),
-                            
+
                             // Sign Up Button
                             SizedBox(
                               width: double.infinity,
@@ -294,13 +310,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               child: ElevatedButton(
                                 onPressed: _isLoading ? null : _handleSignUp,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.deepOrange,
+                                  backgroundColor: AppColors.primaryDark,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
                                 child: _isLoading
-                                    ? CircularProgressIndicator(color: Colors.white)
+                                    ? CircularProgressIndicator(
+                                        color: Colors.white)
                                     : Text(
                                         'Sign Up',
                                         style: TextStyle(
@@ -317,7 +334,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
                   SizedBox(height: 30),
-                  
+
                   // Login Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,

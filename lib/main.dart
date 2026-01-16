@@ -8,10 +8,12 @@ import 'schedule_screen.dart';
 import 'profile_screen.dart';
 import 'login_screen.dart';
 import 'config/firebase_config.dart';
+import 'config/app_colors.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize Firebase
   await Firebase.initializeApp(
     options: FirebaseOptions(
@@ -23,7 +25,10 @@ void main() async {
       appId: FirebaseConfig.appId,
     ),
   );
-  
+
+  // Initialize Notification Service
+  await NotificationService().initialize();
+
   runApp(SmartFeederApp());
 }
 
@@ -33,9 +38,18 @@ class SmartFeederApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Smart Pet Feeder',
+      navigatorKey: NavigationService.navigatorKey, // For global navigation
       theme: ThemeData(
-        primarySwatch: Colors.deepOrange,
-        scaffoldBackgroundColor: Colors.grey[100],
+        primarySwatch: AppColors.primarySwatch,
+        primaryColor: AppColors.primaryDark,
+        scaffoldBackgroundColor: AppColors.backgroundLight,
+        cardColor: AppColors.cardBackground,
+        colorScheme: ColorScheme.light(
+          primary: AppColors.primaryDark,
+          secondary: AppColors.accentSage,
+          surface: AppColors.cardBackground,
+          background: AppColors.backgroundLight,
+        ),
         useMaterial3: true,
       ),
       home: AuthWrapper(), // Use auth wrapper instead of direct login screen
@@ -54,16 +68,16 @@ class AuthWrapper extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
             body: Center(
-              child: CircularProgressIndicator(color: Colors.deepOrange),
+              child: CircularProgressIndicator(color: AppColors.primaryDark),
             ),
           );
         }
-        
+
         // If user is logged in, show main navigation
         if (snapshot.hasData) {
           return MainNavigation();
         }
-        
+
         // Otherwise show login screen
         return LoginScreen();
       },

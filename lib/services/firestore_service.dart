@@ -2,16 +2,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/feeding_log.dart';
 import '../models/sensor_data.dart';
 import '../models/feeding_command.dart';
+import '../models/routine.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String deviceId = 'feeder_001';
 
   // Get reference to feeder document
-  DocumentReference get _feederRef => _firestore.collection('feeders').doc(deviceId);
+  DocumentReference get _feederRef =>
+      _firestore.collection('feeders').doc(deviceId);
 
   // ===== FEEDING LOGS =====
-  
+
   // Get all feeding logs (for history screen)
   Stream<List<FeedingLog>> getFeedingLogs({int limit = 50}) {
     return _feederRef
@@ -28,6 +30,7 @@ class FirestoreService {
   Future<void> addFeedingLog({
     required int foodRemaining,
     required String source, // "manually" or "scheduled"
+    double portionSize = 0.0, // in grams
   }) async {
     try {
       await _feederRef.collection('feeding_logs').add({
@@ -36,6 +39,7 @@ class FirestoreService {
         'last_seen': FieldValue.serverTimestamp(),
         'source': source,
         'timestamp': FieldValue.serverTimestamp(),
+        'portion_size': portionSize,
       });
     } catch (e) {
       print('Error adding feeding log: $e');
@@ -44,7 +48,8 @@ class FirestoreService {
   }
 
   // Get feeding logs for specific date range (for analytics)
-  Stream<List<FeedingLog>> getFeedingLogsByDateRange(DateTime start, DateTime end) {
+  Stream<List<FeedingLog>> getFeedingLogsByDateRange(
+      DateTime start, DateTime end) {
     return _feederRef
         .collection('feeding_logs')
         .where('timestamp', isGreaterThanOrEqualTo: start)
@@ -56,46 +61,84 @@ class FirestoreService {
             .toList());
   }
 
+  // Get today's feeding logs
+  Stream<List<FeedingLog>> getTodaysFeedingLogs() {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day, 0, 0, 0);
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    return getFeedingLogsByDateRange(startOfDay, endOfDay);
+  }
+
+  // Calculate total portions fed today
+  Future<double> getTodaysTotalPortions() async {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day, 0, 0, 0);
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    try {
+      final snapshot = await _feederRef
+          .collection('feeding_logs')
+          .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+          .where('timestamp', isLessThanOrEqualTo: endOfDay)
+          .get();
+
+      double total = 0.0;
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final portionSize = (data['portion_size'] ?? 0).toDouble();
+        total += portionSize;
+      }
+
+      print('DEBUG: Total portions fed today: ${total}g');
+      return total;
+    } catch (e) {
+      print('Error calculating today\'s total: $e');
+      return 0.0;
+    }
+  }
+
   // ===== SENSOR HISTORY =====
-  
+
   // Get latest sensor data (for dashboard)
   // Reading from main document: feeders/feeder_001
   Stream<SensorData?> getLatestSensorData() {
     return _feederRef.snapshots().map((snapshot) {
       print('DEBUG: Reading from main document feeder_001');
-      
+
       if (!snapshot.exists) {
         print('DEBUG: Main document does not exist');
         return null;
       }
-      
+
       final data = snapshot.data() as Map<String, dynamic>?;
       if (data == null) {
         print('DEBUG: Main document has no data');
         return null;
       }
-      
+
       print('DEBUG: Main document data: $data');
       print('DEBUG: Available fields: ${data.keys.toList()}');
-      
+
       // Check if it has required sensor data fields
       if (!data.containsKey('temp') || !data.containsKey('humidity')) {
         print('DEBUG: Missing required sensor fields (temp, humidity)');
         return null;
       }
-      
+
       // Parse last_seen for debugging
       if (data['last_seen'] != null) {
         try {
           final lastSeenTime = (data['last_seen'] as dynamic).toDate();
           final now = DateTime.now();
           final diff = now.difference(lastSeenTime);
-          print('DEBUG: last_seen was ${diff.inMinutes} minutes ago (${diff.inHours} hours)');
+          print(
+              'DEBUG: last_seen was ${diff.inMinutes} minutes ago (${diff.inHours} hours)');
         } catch (e) {
           print('DEBUG: Error parsing last_seen: $e');
         }
       }
-      
+
       try {
         return SensorData.fromFirestore(data, snapshot.id);
       } catch (e) {
@@ -104,14 +147,14 @@ class FirestoreService {
       }
     });
   }
-  
+
   // Alternative: Get sensor data from main document (if your IoT writes there)
   Stream<SensorData?> getSensorDataFromMainDoc() {
     return _feederRef.snapshots().map((snapshot) {
       if (!snapshot.exists) return null;
       final data = snapshot.data() as Map<String, dynamic>?;
       if (data == null) return null;
-      
+
       // Check if it has sensor data fields
       if (data.containsKey('temp') && data.containsKey('humidity')) {
         try {
@@ -138,7 +181,8 @@ class FirestoreService {
   }
 
   // Get sensor data for specific date range
-  Stream<List<SensorData>> getSensorDataByDateRange(DateTime start, DateTime end) {
+  Stream<List<SensorData>> getSensorDataByDateRange(
+      DateTime start, DateTime end) {
     return _feederRef
         .collection('sensor_history')
         .where('timestamp', isGreaterThanOrEqualTo: start)
@@ -174,7 +218,7 @@ class FirestoreService {
   }
 
   // ===== ANALYTICS HELPERS =====
-  
+
   // Get sensor data for last N days
   Stream<List<SensorData>> getSensorDataLastNDays(int days) {
     final start = DateTime.now().subtract(Duration(days: days));
@@ -193,10 +237,13 @@ class FirestoreService {
   }
 
   // ===== FEEDING COMMANDS (IoT Control) =====
-  
+
   // Send feeding command to IoT device
   Future<String> sendFeedingCommand(int portionSize) async {
     try {
+      print('DEBUG: Starting sendFeedingCommand with portion: $portionSize');
+
+      // 1. Create the command tracking document first
       final commandRef = await _feederRef.collection('feeding_commands').add({
         'device_id': deviceId,
         'portion_size': portionSize,
@@ -205,10 +252,20 @@ class FirestoreService {
         'executed_at': null,
         'error_message': null,
       });
-      
+      print('DEBUG: Command document created: ${commandRef.id}');
+
+      // 2. Then set manual_feed to true to trigger the backend listener
+      // Using set() with merge:true to create field if it doesn't exist
+      await _feederRef.set({
+        'manual_feed': true,
+      }, SetOptions(merge: true));
+
+      print('DEBUG: manual_feed set to true successfully!');
+
       return commandRef.id;
     } catch (e) {
-      print('Error sending feeding command: $e');
+      print('ERROR sending feeding command: $e');
+      print('ERROR details: ${e.toString()}');
       rethrow;
     }
   }
@@ -246,7 +303,8 @@ class FirestoreService {
     try {
       await _feederRef.collection('feeding_commands').doc(commandId).update({
         'status': status,
-        'executed_at': status != 'pending' ? FieldValue.serverTimestamp() : null,
+        'executed_at':
+            status != 'pending' ? FieldValue.serverTimestamp() : null,
         'error_message': errorMessage,
       });
     } catch (e) {
@@ -266,5 +324,160 @@ class FirestoreService {
             .map((doc) => FeedingCommand.fromFirestore(doc.data(), doc.id))
             .toList());
   }
-}
 
+  // ===== ROUTINE/SCHEDULE MANAGEMENT =====
+
+  // Get all routines for this feeder
+  Stream<List<Routine>> getRoutines() {
+    return _feederRef.snapshots().map((snapshot) {
+      if (!snapshot.exists) return [];
+
+      final data = snapshot.data() as Map<String, dynamic>?;
+      if (data == null || !data.containsKey('routines')) return [];
+
+      final routinesList = data['routines'] as List<dynamic>;
+      return routinesList.asMap().entries.map((entry) {
+        final index = entry.key;
+        final routineData = entry.value as Map<String, dynamic>;
+        return Routine.fromFirestore(routineData, index.toString());
+      }).toList();
+    });
+  }
+
+  // Add new routine
+  Future<void> addRoutine(Routine routine) async {
+    try {
+      print('DEBUG: Adding routine...');
+      print('DEBUG: Routine data: ${routine.toFirestore()}');
+
+      final doc = await _feederRef.get();
+      print('DEBUG: Document exists: ${doc.exists}');
+
+      if (!doc.exists) {
+        print(
+            'DEBUG: Document does not exist, creating it with routines field...');
+        await _feederRef.set({
+          'device_id': deviceId,
+          'routines': [routine.toFirestore()],
+        });
+        print('DEBUG: ✅ Document and routine created!');
+        return;
+      }
+
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+      print('DEBUG: Current document data keys: ${data.keys.toList()}');
+
+      // Get existing routines or create new empty list
+      List<Map<String, dynamic>> routines;
+
+      if (!data.containsKey('routines')) {
+        print('DEBUG: routines field does not exist, creating it...');
+        routines = [];
+      } else if (data['routines'] is! List) {
+        print(
+            'DEBUG: routines field exists but is not a list, replacing it...');
+        routines = [];
+      } else {
+        try {
+          routines = List<Map<String, dynamic>>.from(data['routines']);
+          print('DEBUG: Existing routines count: ${routines.length}');
+        } catch (e) {
+          print(
+              'DEBUG: Error parsing existing routines, creating fresh list: $e');
+          routines = [];
+        }
+      }
+
+      routines.add(routine.toFirestore());
+      print('DEBUG: New routines count: ${routines.length}');
+      print('DEBUG: Full routines array: $routines');
+
+      await _feederRef.set({
+        'routines': routines,
+      }, SetOptions(merge: true));
+
+      print('DEBUG: ✅ Routine saved to Firebase!');
+
+      // Verify it was saved
+      await Future.delayed(Duration(milliseconds: 500));
+      final verifyDoc = await _feederRef.get();
+      final verifyData = verifyDoc.data() as Map<String, dynamic>?;
+      print(
+          'DEBUG: Verification - routines in Firebase: ${verifyData?['routines']}');
+    } catch (e) {
+      print('ERROR adding routine: $e');
+      print('ERROR stack trace: ${StackTrace.current}');
+      rethrow;
+    }
+  }
+
+  // Update existing routine by index
+  Future<void> updateRoutine(int index, Routine routine) async {
+    try {
+      final doc = await _feederRef.get();
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+      final routines = List<Map<String, dynamic>>.from(data['routines'] ?? []);
+
+      if (index >= 0 && index < routines.length) {
+        routines[index] = routine.toFirestore();
+
+        await _feederRef.update({
+          'routines': routines,
+        });
+
+        print('Routine updated successfully');
+      } else {
+        throw Exception('Invalid routine index: $index');
+      }
+    } catch (e) {
+      print('Error updating routine: $e');
+      rethrow;
+    }
+  }
+
+  // Delete routine by index
+  Future<void> deleteRoutine(int index) async {
+    try {
+      final doc = await _feederRef.get();
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+      final routines = List<Map<String, dynamic>>.from(data['routines'] ?? []);
+
+      if (index >= 0 && index < routines.length) {
+        routines.removeAt(index);
+
+        await _feederRef.update({
+          'routines': routines,
+        });
+
+        print('Routine deleted successfully');
+      } else {
+        throw Exception('Invalid routine index: $index');
+      }
+    } catch (e) {
+      print('Error deleting routine: $e');
+      rethrow;
+    }
+  }
+
+  // Toggle routine enabled/disabled
+  Future<void> toggleRoutineEnabled(int index) async {
+    try {
+      final doc = await _feederRef.get();
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+      final routines = List<Map<String, dynamic>>.from(data['routines'] ?? []);
+
+      if (index >= 0 && index < routines.length) {
+        routines[index]['enabled'] = !(routines[index]['enabled'] ?? true);
+
+        await _feederRef.update({
+          'routines': routines,
+        });
+
+        print('Routine toggle successful');
+      }
+    } catch (e) {
+      print('Error toggling routine: $e');
+      rethrow;
+    }
+  }
+}

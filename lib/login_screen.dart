@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'signup_screen.dart';
 import 'main.dart';
 import 'services/auth_service.dart';
+import 'config/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -26,13 +27,13 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      
+
       try {
         await _authService.signInWithEmailPassword(
           _emailController.text,
           _passwordController.text,
         );
-        
+
         // Navigation will be handled by auth state listener in main.dart
         if (mounted) {
           Navigator.pushReplacement(
@@ -45,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(e.toString()),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -63,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Please enter your email address'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -75,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Password reset email sent! Check your inbox.'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -85,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString()),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -100,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.deepOrange[400]!, Colors.deepOrange[700]!],
+            colors: AppColors.earthGradient,
           ),
         ),
         child: SafeArea(
@@ -127,11 +128,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Icon(
                       Icons.pets,
                       size: 80,
-                      color: Colors.deepOrange,
+                      color: AppColors.primaryDark,
                     ),
                   ),
                   SizedBox(height: 30),
-                  
+
                   // Title
                   Text(
                     'Smart Pet Feeder',
@@ -150,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   SizedBox(height: 50),
-                  
+
                   // Login Form Card
                   Card(
                     elevation: 8,
@@ -169,13 +170,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               keyboardType: TextInputType.emailAddress,
                               decoration: InputDecoration(
                                 labelText: 'Email',
-                                prefixIcon: Icon(Icons.email, color: Colors.deepOrange),
+                                prefixIcon: Icon(Icons.email,
+                                    color: AppColors.primaryDark),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.deepOrange, width: 2),
+                                  borderSide: BorderSide(
+                                      color: AppColors.primaryDark, width: 2),
                                 ),
                               ),
                               validator: (value) {
@@ -189,21 +192,25 @@ class _LoginScreenState extends State<LoginScreen> {
                               },
                             ),
                             SizedBox(height: 20),
-                            
+
                             // Password Field
                             TextFormField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
                               decoration: InputDecoration(
                                 labelText: 'Password',
-                                prefixIcon: Icon(Icons.lock, color: Colors.deepOrange),
+                                prefixIcon: Icon(Icons.lock,
+                                    color: AppColors.primaryDark),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                    _obscurePassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
                                     color: Colors.grey,
                                   ),
                                   onPressed: () {
-                                    setState(() => _obscurePassword = !_obscurePassword);
+                                    setState(() =>
+                                        _obscurePassword = !_obscurePassword);
                                   },
                                 ),
                                 border: OutlineInputBorder(
@@ -211,7 +218,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.deepOrange, width: 2),
+                                  borderSide: BorderSide(
+                                      color: AppColors.primaryDark, width: 2),
                                 ),
                               ),
                               validator: (value) {
@@ -225,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               },
                             ),
                             SizedBox(height: 15),
-                            
+
                             // Forgot Password
                             Align(
                               alignment: Alignment.centerRight,
@@ -233,12 +241,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onPressed: _handleForgotPassword,
                                 child: Text(
                                   'Forgot Password?',
-                                  style: TextStyle(color: Colors.deepOrange),
+                                  style:
+                                      TextStyle(color: AppColors.primaryDark),
                                 ),
                               ),
                             ),
                             SizedBox(height: 10),
-                            
+
                             // Login Button
                             SizedBox(
                               width: double.infinity,
@@ -246,13 +255,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: ElevatedButton(
                                 onPressed: _isLoading ? null : _handleLogin,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.deepOrange,
+                                  backgroundColor: AppColors.primaryDark,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
                                 child: _isLoading
-                                    ? CircularProgressIndicator(color: Colors.white)
+                                    ? CircularProgressIndicator(
+                                        color: Colors.white)
                                     : Text(
                                         'Login',
                                         style: TextStyle(
@@ -269,7 +279,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   SizedBox(height: 30),
-                  
+
                   // Sign Up Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -282,7 +292,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => SignUpScreen()),
+                            MaterialPageRoute(
+                                builder: (context) => SignUpScreen()),
                           );
                         },
                         child: Text(

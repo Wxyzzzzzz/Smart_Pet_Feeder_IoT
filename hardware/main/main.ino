@@ -120,43 +120,83 @@ void dispenseFood(String source) {
 
 // Callback: Runs when a message arrives on subscribed topic
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.print("]: ");
+  Serial.println("====================================");
+  Serial.println("    MQTT MESSAGE RECEIVED!");
+  Serial.println("====================================");
+  Serial.print("Topic: ");
+  Serial.println(topic);
+  Serial.print("Payload Length: ");
+  Serial.println(length);
+  Serial.print("Raw Payload: ");
   
   String message;
   for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
     message += (char)payload[i];
   }
+  Serial.println();
+  Serial.print("Parsed Message: ");
   Serial.println(message);
+  Serial.println("====================================");
 
   // Check if the message says "FEED"
   if (String(topic) == COMMAND_TOPIC) {
+    Serial.println("Topic matches COMMAND_TOPIC!");
+    Serial.print("Checking for 'FEED' command in: ");
+    Serial.println(message);
+    
     if (message.indexOf("FEED") >= 0) {
+      Serial.println("✅ FEED command detected! Starting dispense...");
       dispenseFood("SYSTEM");
+    } else {
+      Serial.println("❌ No FEED command found in message");
     }
+  } else {
+    Serial.print("Topic mismatch! Expected: ");
+    Serial.print(COMMAND_TOPIC);
+    Serial.print(", Got: ");
+    Serial.println(topic);
   }
+  Serial.println("====================================");
 }
 
 // Reconnect Loop
 void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
+    Serial.print("Attempting MQTT connection to ");
+    Serial.print(MQTT_SERVER);
+    Serial.print(":");
+    Serial.print(MQTT_PORT);
+    Serial.print("...");
     
     // Create a random client ID so multiple devices don't clash
     String clientId = "ESP32Client-";
     clientId += String(random(0xffff), HEX);
     
+    Serial.print(" (Client ID: ");
+    Serial.print(clientId);
+    Serial.print(")...");
+    
     // Attempt to connect
     if (client.connect(clientId.c_str(), MQTT_USER, MQTT_PASS)) {
-      Serial.println("connected");
+      Serial.println("✅ CONNECTED!");
+      Serial.print("Subscribing to: ");
+      Serial.println(COMMAND_TOPIC);
+      
       // Once connected, resubscribe to the command topic
-      client.subscribe(COMMAND_TOPIC);
+      bool subResult = client.subscribe(COMMAND_TOPIC);
+      
+      if (subResult) {
+        Serial.println("✅ Subscription successful!");
+      } else {
+        Serial.println("❌ Subscription FAILED!");
+      }
     } else {
-      Serial.print("failed, rc=");
+      Serial.print("❌ FAILED, rc=");
       Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
+      Serial.println(" | Retry in 5s...");
+      Serial.println("Return codes: -4=timeout, -3=lost, -2=failed, -1=disconnected, 0=connected, 1=bad protocol, 2=rejected, 3=unavailable, 4=bad credentials, 5=unauthorized");
       delay(5000);
     }
   }
@@ -167,34 +207,69 @@ void reconnect() {
 // ================================================================
 void setup() {
   Serial.begin(9600);
+  delay(1000);
+  
+  Serial.println("\n\n====================================");
+  Serial.println("   SMART PET FEEDER - ESP32");
+  Serial.println("====================================");
 
   // Hardware Initialization
+  Serial.println("Initializing Hardware...");
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   pinMode(IR_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   dht.begin();
+  Serial.println("✅ Hardware initialized");
   
   // WiFi Connection
-  delay(10);
-  Serial.println();
-  Serial.print("Connecting to ");
+  Serial.println("\n--- WiFi Connection ---");
+  Serial.print("SSID: ");
   Serial.println(WIFI_SSID);
+  Serial.print("Connecting");
 
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-  while (WiFi.status() != WL_CONNECTED) {
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 30) {
     delay(500);
     Serial.print(".");
+    attempts++;
   }
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\n✅ WiFi connected!");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+    Serial.print("Signal Strength (RSSI): ");
+    Serial.print(WiFi.RSSI());
+    Serial.println(" dBm");
+  } else {
+    Serial.println("\n❌ WiFi connection FAILED!");
+    Serial.println("Please check credentials in secret.h");
+  }
 
   // MQTT Initialization
+  Serial.println("\n--- MQTT Configuration ---");
+  Serial.print("Server: ");
+  Serial.println(MQTT_SERVER);
+  Serial.print("Port: ");
+  Serial.println(MQTT_PORT);
+  Serial.print("Username: ");
+  Serial.println(MQTT_USER);
+  Serial.print("Command Topic: ");
+  Serial.println(COMMAND_TOPIC);
+  Serial.print("Event Topic: ");
+  Serial.println(EVENT_TOPIC);
+  Serial.print("Telemetry Topic: ");
+  Serial.println(TELEMETRY_TOPIC);
+  
   client.setServer(MQTT_SERVER, MQTT_PORT);
   client.setCallback(callback);
+  
+  Serial.println("\n====================================");
+  Serial.println("   SETUP COMPLETE - STARTING LOOP");
+  Serial.println("====================================\n");
 }
 
 // ================================================================

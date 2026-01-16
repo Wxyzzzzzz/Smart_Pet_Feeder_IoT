@@ -7,6 +7,7 @@ class FeedingLog {
   final DateTime lastSeen;
   final String source; // "manually" or "scheduled"
   final DateTime timestamp;
+  final double portionSize; // in grams
 
   FeedingLog({
     required this.id,
@@ -15,6 +16,7 @@ class FeedingLog {
     required this.lastSeen,
     required this.source,
     required this.timestamp,
+    this.portionSize = 0.0,
   });
 
   factory FeedingLog.fromFirestore(Map<String, dynamic> data, String docId) {
@@ -25,6 +27,7 @@ class FeedingLog {
       lastSeen: _parseTimestamp(data['last_seen']),
       source: data['source'] ?? '',
       timestamp: _parseTimestamp(data['timestamp']),
+      portionSize: (data['portion_size'] ?? 0).toDouble(),
     );
   }
 
@@ -42,6 +45,7 @@ class FeedingLog {
       'last_seen': Timestamp.fromDate(lastSeen),
       'source': source,
       'timestamp': Timestamp.fromDate(timestamp),
+      'portion_size': portionSize,
     };
   }
 }
