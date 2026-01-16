@@ -45,6 +45,17 @@ app.*.map.json
 # Hardware
 /hardware/main/secret.h
 
-# Cloud
+# Cloud - Firebase and sensitive credentials
 /cloud/credentials.json
 /cloud/serviceAccountKey.json
+/cloud/serviceAccountKey*.json
+/cloud/*.json
+!cloud/requirements.txt
+
+# Python virtual environment
+/cloud/iot_venv/
+__pycache__/
+*.pyc
+
+# Android local properties
+/android/local.properties
