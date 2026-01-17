@@ -5,6 +5,7 @@ import os
 import pytz
 import threading
 from datetime import datetime
+import ssl
 import firebase_admin
 from firebase_admin import credentials, firestore, messaging
 
@@ -12,7 +13,7 @@ from firebase_admin import credentials, firestore, messaging
 # Since this script runs on the SAME VM as the Mosquitto Broker,
 # we can use "localhost" for lower latency and security.
 BROKER = "localhost" 
-PORT = 1883
+PORT = 8883
 USERNAME = "esp32_user"
 PASSWORD = "1234" 
 
@@ -42,7 +43,6 @@ db = firestore.client()
 # --- GLOBAL VARIABLES ---
 mqtt_client = None  # We need this accessible globally to send commands
 is_mqtt_connected = False
-last_scheduled_feed_time = {}  # Track when scheduled feeds happen
 
 # --- HELPER FUNCTIONS ---
 
@@ -51,27 +51,12 @@ def send_mqtt_command(device_id, command_text):
     # FIX: Topic must match firmware (feeder/feeder_001/command)
     topic = f"{TOPIC_CMD_PREFIX}{device_id}/command"
     
-    print(f"[DEBUG] Attempting to send MQTT command...")
-    print(f"[DEBUG] - Device ID: {device_id}")
-    print(f"[DEBUG] - Command: {command_text}")
-    print(f"[DEBUG] - Topic: {topic}")
-    print(f"[DEBUG] - MQTT Client exists: {mqtt_client is not None}")
-    print(f"[DEBUG] - MQTT Connected: {is_mqtt_connected}")
-    
     if mqtt_client and is_mqtt_connected:
         info = mqtt_client.publish(topic, command_text)
         info.wait_for_publish() # Block until message is actually sent to broker
-        print(f"[COMMAND] ✅ Sent '{command_text}' to {topic} (Message ID: {info.mid})")
-        
-        # Additional confirmation
-        if info.rc == 0:
-            print(f"[SUCCESS] Message published successfully!")
-        else:
-            print(f"[ERROR] Publish failed with return code: {info.rc}")
+        print(f"[COMMAND] Sent '{command_text}' to {topic} (Message ID: {info.mid})")
     else:
-        print(f"[ERROR] ❌ Cannot send command: MQTT not connected!")
-        print(f"[ERROR] - Client: {mqtt_client}")
-        print(f"[ERROR] - Connected: {is_mqtt_connected}")
+        print(f"[ERROR] Cannot send command: MQTT not connected! (Client: {mqtt_client}, Connected: {is_mqtt_connected})")
 
 def update_live_status(device_id, data):
     doc_ref = db.collection("feeders").document(device_id)
@@ -91,26 +76,18 @@ def on_snapshot(doc_snapshot, changes, read_time):
     """
     Listens for changes on the specific feeder document.
     """
-    print(f"[DEBUG] Firestore snapshot received at {read_time}")
-    print(f"[DEBUG] Number of documents in snapshot: {len(doc_snapshot)}")
-    
     # doc_snapshot is a list of documents if tracking collection, 
     # but for a single document watch, let's treat it carefully.
     
     for doc in doc_snapshot:
-        print(f"[DEBUG] Processing document: {doc.id}, exists: {doc.exists}")
-        
         if not doc.exists:
-            print(f"[WARNING] Document {doc.id} does not exist!")
             continue
             
         data = doc.to_dict()
         doc_id = doc.id
         manual_feed_val = data.get('manual_feed')
         
-        # [DEBUG] Always print manual_feed state for debugging
-        print(f"[DEBUG] Document {doc_id} - manual_feed = {manual_feed_val} (type: {type(manual_feed_val)})")
-        
+        # [DEBUG] Print state of manual_feed to debug the button press
         # Only print if it's potentially interesting (true) to avoid log spam from sensor updates
         if manual_feed_val is True:
              print(f"[DEBUG] Document {doc_id} STATE CHANGE: manual_feed = {manual_feed_val}")
@@ -149,17 +126,13 @@ feeder_watch = db.collection("feeders").document("feeder_001").on_snapshot(on_sn
 def check_schedules():
     """Checks if any routine matches the current time"""
     
-    # Use UTC timezone (matches VM system time)
+    # Get Malaysia Time
     try:
-        utc_tz = pytz.UTC
-        now = datetime.now(utc_tz)
+        kl_tz = pytz.timezone('Asia/Kuala_Lumpur')
+        now = datetime.now(kl_tz)
         
         current_time_str = now.strftime("%H:%M") # e.g. "14:30"
         current_day_int = now.weekday()          # 0=Mon, 6=Sun
-        
-        # Debug: Print current time being checked (only print once per minute to avoid spam)
-        if now.second < 10:  # Only print in first 10 seconds of each minute
-            print(f"[SCHEDULER] Current UTC time: {current_time_str}, Day: {current_day_int} ({['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][current_day_int]})")
         
         # Only print this once in a while to avoid spamming logs
         # print(f"[SCHEDULER] Checking {current_time_str} on day {current_day_int}...")
@@ -172,51 +145,14 @@ def check_schedules():
             device_id = doc.id
             routines = data.get('routines', [])
             
-            if not isinstance(routines, list):
-                print(f"[SCHEDULER ERROR] routines is not a list for {device_id}, got: {type(routines)}")
-                continue
-            
-            for index, routine in enumerate(routines):
-                # Skip if routine is not a dictionary
-                if not isinstance(routine, dict):
-                    print(f"[SCHEDULER ERROR] Routine {index} is not a dict for {device_id}, got type: {type(routine)}, value: {routine}")
-                    print(f"[SCHEDULER ERROR] Please delete this invalid entry from Firebase!")
-                    continue
-                
+            for routine in routines:
                 # Logic: Enabled? + Time Match? + Day Match?
-                try:
-                    if (routine.get('enabled') == True and 
-                        routine.get('time') == current_time_str and 
-                        current_day_int in routine.get('days', [])):
-                        
-                        print(f"[SCHEDULE] Match found for {device_id} at {current_time_str}!")
-                        
-                        # Mark this as a scheduled feed (will be used when event comes back)
-                        last_scheduled_feed_time[device_id] = datetime.now(utc_tz)
-                        
-                        # Send feed command
-                        send_mqtt_command(device_id, "FEED")
-                        
-                        # Also create a feeding log entry with scheduled source
-                        portion_size = routine.get('portion_size', 20)  # Get portion from routine
-                        try:
-                            # Add feeding log to Firestore with "scheduled" source
-                            db.collection("feeders").document(device_id).collection("feeding_logs").add({
-                                'device_id': device_id,
-                                'source': 'scheduled',
-                                'timestamp': firestore.SERVER_TIMESTAMP,
-                                'last_seen': firestore.SERVER_TIMESTAMP,
-                                'portion_size': portion_size,
-                                'food_remaining': 0,  # Will be updated when device responds
-                                'scheduled_time': current_time_str,
-                            })
-                            print(f"[SCHEDULE] Added feeding log for scheduled feed: {portion_size}g")
-                        except Exception as log_error:
-                            print(f"[SCHEDULE ERROR] Failed to log scheduled feed: {log_error}")
-                        
-                except Exception as routine_error:
-                    print(f"[SCHEDULER ERROR] Failed processing routine {index}: {routine_error}")
-                    print(f"[SCHEDULER ERROR] Routine data: {routine}")
+                if (routine.get('enabled') == True and 
+                    routine.get('time') == current_time_str and 
+                    current_day_int in routine.get('days')):
+                    
+                    print(f"[SCHEDULE] Match found for {device_id} at {current_time_str}!")
+                    send_mqtt_command(device_id, "FEED")
                     
                     # IMPORTANT: Sleep briefly to avoid double-triggering in the same second
                     # But since we run this loop every 60s, it should be fine.
@@ -253,24 +189,6 @@ def on_message(client, userdata, msg):
         
         if "events" in msg.topic:
             print(f"[EVENT] Feeding Complete!")
-            
-            # Check if this was a scheduled feed (within last 2 minutes)
-            if device_id in last_scheduled_feed_time:
-                time_diff = (datetime.now(pytz.UTC) - last_scheduled_feed_time[device_id]).total_seconds()
-                if time_diff < 120:  # Within 2 minutes
-                    # This is a scheduled feed - ensure source is "scheduled"
-                    data['source'] = 'scheduled'
-                    print(f"[EVENT] Marking as SCHEDULED feed (triggered {time_diff:.0f}s ago)")
-                    # Clear the tracking
-                    del last_scheduled_feed_time[device_id]
-                else:
-                    # Old scheduled feed tracking, clear it
-                    del last_scheduled_feed_time[device_id]
-            
-            # If no source is set, default to "manually"
-            if 'source' not in data:
-                data['source'] = 'manually'
-            
             save_history(device_id, "feeding_logs", data)
             update_live_status(device_id, data)
             
@@ -283,6 +201,22 @@ def on_message(client, userdata, msg):
 
 # --- MAIN SETUP ---
 mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+#mqtt_client.tls_set(ca_certs="ca.crt")    #TLS Cert
+#mqtt_client.tls_insecure_set(True)
+
+# 1. Create a custom SSL context
+context = ssl.create_default_context()
+
+# 2. Tell the context to trust your CA file
+context.load_verify_locations(cafile="ca.crt")
+
+# 3. Disable strict checks (The "Nuclear" part)
+context.check_hostname = False
+context.verify_mode = ssl.CERT_NONE 
+
+# 4. Apply the context to the client
+mqtt_client.tls_set_context(context)
+
 mqtt_client.username_pw_set(USERNAME, PASSWORD)
 mqtt_client.on_connect = on_connect
 mqtt_client.on_disconnect = on_disconnect
