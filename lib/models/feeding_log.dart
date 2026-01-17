@@ -5,9 +5,9 @@ class FeedingLog {
   final String deviceId;
   final int foodRemaining;
   final DateTime lastSeen;
-  final String source; // "manually" or "scheduled"
+  final String source;
   final DateTime timestamp;
-  final double portionSize; // in grams
+  final double portionSize; 
 
   FeedingLog({
     required this.id,

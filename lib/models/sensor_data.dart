@@ -7,9 +7,9 @@ class SensorData {
   final int foodLevel;
   final int humidity;
   final DateTime lastSeen;
-  final double temp; // Changed to double to support decimal temperatures
+  final double temp; 
   final DateTime timestamp;
-  final String? type; // e.g., "FEEDING_COMPLETE", "PET_DETECTED", etc.
+  final String? type; 
 
   SensorData({
     required this.id,

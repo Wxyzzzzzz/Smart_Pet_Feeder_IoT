@@ -1,15 +1,9 @@
-"""
-Notification Monitor Script
-Monitors Firestore for feeding events and sensor data to trigger notifications.
-This should be run alongside backend.py or integrated into it.
-"""
-
 import firebase_admin
 from firebase_admin import credentials, firestore, messaging
 import time
 from datetime import datetime
 
-# Initialize Firebase (if not already done)
+# Initialize Firebase
 try:
     db = firestore.client()
 except:
@@ -18,8 +12,8 @@ except:
     db = firestore.client()
 
 # Thresholds
-LOW_FOOD_THRESHOLD = 30.0  # Below 30%
-HIGH_MOISTURE_THRESHOLD = 60.0  # Above 60%
+LOW_FOOD_THRESHOLD = 30.0  
+HIGH_MOISTURE_THRESHOLD = 60.0  
 
 # Track notification states to avoid spam
 last_low_food_notification = {}
@@ -36,7 +30,7 @@ def send_fcm_notification(title, body, data=None):
                 body=body,
             ),
             data=data or {},
-            topic='all_users'  # Send to topic (users need to subscribe to this)
+            topic='all_users' 
         )
         
         # Send the message
@@ -48,7 +42,7 @@ def send_fcm_notification(title, body, data=None):
         return None
 
 def can_send_notification(device_id, notification_type, last_notifications_dict):
-    """Check if cooldown period has passed"""
+    """Check if is cooldown"""
     if device_id not in last_notifications_dict:
         return True
     
@@ -59,7 +53,7 @@ def can_send_notification(device_id, notification_type, last_notifications_dict)
     return diff_minutes >= COOLDOWN_MINUTES
 
 def monitor_sensor_data(doc_snapshot, changes, read_time):
-    """Monitor sensor data for alerts"""
+    """Monitor sensor data"""
     for doc in doc_snapshot:
         if not doc.exists:
             continue
@@ -67,11 +61,9 @@ def monitor_sensor_data(doc_snapshot, changes, read_time):
         data = doc.to_dict()
         device_id = doc.id
         
-        # Check food level
         food_level = data.get('food_level', 100)
         humidity = data.get('humidity', 0)
         
-        # Calculate food percentage (assuming food_level is 0-100)
         food_percentage = food_level
         
         # Low food alert
@@ -105,7 +97,6 @@ def monitor_feeding_logs(collection_snapshot, changes, read_time):
             device_id = data.get('device_id', 'feeder_001')
             food_remaining = data.get('food_remaining', 0)
             
-            # Only notify for scheduled feeds (not manual)
             if source == 'scheduled':
                 send_fcm_notification(
                     title='✅ Scheduled Feeding Complete',
@@ -113,7 +104,6 @@ def monitor_feeding_logs(collection_snapshot, changes, read_time):
                     data={'type': 'scheduled_feed', 'device_id': device_id}
                 )
                 
-                # Also check if food is low after feeding
                 if food_remaining <= LOW_FOOD_THRESHOLD:
                     if can_send_notification(device_id, 'low_food', last_low_food_notification):
                         send_fcm_notification(
@@ -127,20 +117,17 @@ def start_monitoring():
     """Start all monitoring services"""
     print("[NOTIFICATION MONITOR] Starting...")
     
-    # Monitor main feeder document for sensor data
     feeder_watch = db.collection("feeders").document("feeder_001").on_snapshot(
         monitor_sensor_data
     )
-    
-    # Monitor feeding logs for scheduled feeds
+
     feeding_logs_watch = db.collection("feeders").document("feeder_001")\
         .collection("feeding_logs").on_snapshot(monitor_feeding_logs)
     
     print("[NOTIFICATION MONITOR] Monitoring active")
     print("- Watching sensor data for food level and moisture")
     print("- Watching feeding logs for scheduled completions")
-    
-    # Keep running
+
     try:
         while True:
             time.sleep(1)

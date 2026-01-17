@@ -1,37 +1,37 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Pastel Earth Tone Primary Colors
-  static const Color primaryLight = Color(0xFFB8A69A); // Soft taupe
-  static const Color primaryDark = Color(0xFF8C7A6B); // Warm brown
+  // Orimary
+  static const Color primaryLight = Color(0xFFB8A69A); 
+  static const Color primaryDark = Color(0xFF8C7A6B); 
 
-  // Accent Colors (Pastel Earth Tones)
-  static const Color accentSage = Color(0xFFA8B5A0); // Sage green
-  static const Color accentTerracotta = Color(0xFFD4A59A); // Soft terracotta
-  static const Color accentClay = Color(0xFFC9B5A0); // Clay beige
+  // Accent 
+  static const Color accentSage = Color(0xFFA8B5A0);
+  static const Color accentTerracotta = Color(0xFFD4A59A); 
+  static const Color accentClay = Color(0xFFC9B5A0); 
 
-  // Background Colors
-  static const Color backgroundLight = Color(0xFFF5F3F0); // Off-white cream
+  // Background 
+  static const Color backgroundLight = Color(0xFFF5F3F0); 
   static const Color cardBackground = Colors.white;
 
-  // Text Colors
+  // Text 
   static const Color textDark = Color(0xFF4A3F35);
   static const Color textLight = Color(0xFF8C8277);
   static const Color textWhite = Colors.white;
 
-  // Status Colors (Softer versions)
-  static const Color success = Color(0xFF9FB89A); // Soft sage
-  static const Color warning = Color(0xFFD4B896); // Soft ochre
-  static const Color error = Color(0xFFC99A92); // Soft terracotta
-  static const Color info = Color(0xFFA5B5C9); // Soft blue-grey
+  // Status 
+  static const Color success = Color(0xFF9FB89A); 
+  static const Color warning = Color(0xFFD4B896); 
+  static const Color error = Color(0xFFC99A92); 
+  static const Color info = Color(0xFFA5B5C9); 
 
-  // Gradient Colors for Login/Signup
+  // Gradient Colors
   static const List<Color> earthGradient = [
-    Color(0xFFBDADA3), // Warm grey-taupe
-    Color(0xFF9D8B7E), // Deeper warm brown
+    Color(0xFFBDADA3),
+    Color(0xFF9D8B7E), 
   ];
 
-  // Create MaterialColor for theme
+  // MaterialColor
   static MaterialColor createMaterialColor(Color color) {
     List strengths = <double>[.05];
     Map<int, Color> swatch = {};

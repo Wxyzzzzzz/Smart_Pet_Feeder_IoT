@@ -3,8 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class FeedingCommand {
   final String id;
   final String deviceId;
-  final int portionSize; // in grams
-  final String status; // "pending", "processing", "completed", "failed"
+  final int portionSize; 
+  final String status; 
   final DateTime createdAt;
   final DateTime? executedAt;
   final String? errorMessage;

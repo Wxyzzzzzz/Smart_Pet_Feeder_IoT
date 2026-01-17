@@ -1,24 +1,18 @@
-"""
-System Status Checker
-Verifies all components are properly configured and running
-"""
-
 import os
 import sys
 import firebase_admin
 from firebase_admin import credentials, firestore
 
 def check_firebase():
-    """Check Firebase connection and credentials"""
     print("\n=== FIREBASE STATUS ===")
     
     key_path = "serviceAccountKey.json"
     if not os.path.exists(key_path):
-        print(f"❌ {key_path} not found!")
+        print(f"{key_path} not found!")
         print(f"   Current directory: {os.getcwd()}")
         return False
     
-    print(f"✅ {key_path} exists")
+    print(f"{key_path} exists")
     
     try:
         cred = credentials.Certificate(key_path)
@@ -36,14 +30,13 @@ def check_firebase():
         doc = feeder_ref.get()
         
         if doc.exists:
-            print(f"✅ Feeder document exists")
+            print(f"Feeder document exists")
             data = doc.to_dict()
             print(f"   - food_level: {data.get('food_level')}")
             print(f"   - temp: {data.get('temp')}")
             print(f"   - humidity: {data.get('humidity')}")
             print(f"   - manual_feed: {data.get('manual_feed')}")
             
-            # Check last_seen timestamp
             if 'last_seen' in data:
                 from datetime import datetime
                 try:
@@ -55,34 +48,33 @@ def check_firebase():
                         print(f"   - last_seen: {diff.total_seconds():.0f} seconds ago")
                         
                         if diff.total_seconds() < 60:
-                            print("   ✅ Device is ONLINE (recent update)")
+                            print("   Device is ONLINE (recent update)")
                         elif diff.total_seconds() < 300:
-                            print("   ⚠️  Device last seen recently")
+                            print("   Device last seen recently")
                         else:
-                            print("   ❌ Device appears OFFLINE")
+                            print("   Device appears OFFLINE")
                 except:
                     print(f"   - last_seen: {data.get('last_seen')}")
         else:
-            print(f"❌ Feeder document does not exist!")
+            print(f"Feeder document does not exist!")
             print("   Run the backend or ESP32 first to create it")
             return False
         
         return True
         
     except Exception as e:
-        print(f"❌ Firebase error: {e}")
+        print(f"Firebase error: {e}")
         return False
 
 def check_mqtt_config():
-    """Check MQTT configuration in backend.py"""
     print("\n=== MQTT CONFIGURATION ===")
     
     backend_file = "backend.py"
     if not os.path.exists(backend_file):
-        print(f"❌ {backend_file} not found!")
+        print(f"{backend_file} not found!")
         return False
     
-    print(f"✅ {backend_file} exists")
+    print(f"{backend_file} exists")
     
     with open(backend_file, 'r') as f:
         content = f.read()
@@ -108,22 +100,22 @@ def check_secret_h():
     
     secret_path = "../hardware/main/secret.h"
     if not os.path.exists(secret_path):
-        print(f"❌ {secret_path} not found!")
+        print(f"{secret_path} not found!")
         print("   Copy secret.h.template and fill in your credentials")
         return False
     
-    print(f"✅ {secret_path} exists")
+    print(f"{secret_path} exists")
     
     with open(secret_path, 'r') as f:
         content = f.read()
         
         # Check if template values are still present
         if 'YOUR_WIFI_SSID' in content:
-            print("❌ Secret file still has template values!")
+            print("Secret file still has template values!")
             print("   Edit secret.h with your actual WiFi/MQTT credentials")
             return False
         
-        print("✅ Secret file appears configured")
+        print("Secret file appears configured")
         
         import re
         mqtt_server = re.search(r'#define MQTT_SERVER ["\'](.+?)["\']', content)
@@ -150,9 +142,9 @@ def check_dependencies():
     for package in required:
         try:
             __import__(package.replace('-', '_'))
-            print(f"✅ {package}")
+            print(f"{package}")
         except ImportError:
-            print(f"❌ {package} - NOT INSTALLED")
+            print(f"{package} - NOT INSTALLED")
             missing.append(package)
     
     if missing:
@@ -185,15 +177,9 @@ def main():
     all_ok = all(results.values())
     
     if all_ok:
-        print("\n✅ All systems ready!")
-        print("\nNext steps:")
-        print("1. Start MQTT broker (Mosquitto)")
-        print("2. Run: python backend.py")
-        print("3. Upload code to ESP32")
-        print("4. Test with: python test_manual_feed.py")
+        print("All systems ready!")
     else:
-        print("\n❌ Some components need attention")
-        print("Fix the issues above before proceeding")
+        print("Some components need attention")
     
     print("="*50)
 

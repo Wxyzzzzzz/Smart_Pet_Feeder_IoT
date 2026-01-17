@@ -1,8 +1,8 @@
-# 🐾 Smart Pet Feeder System
+# SmartPet Feeder System
 
 An IoT-enabled pet feeding system with automated scheduling, real-time monitoring, and mobile app control. Built with Flutter, Firebase, and ESP32.
 
-## 📋 Overview
+## Overview
 
 The Smart Pet Feeder is a comprehensive solution for automated pet feeding that allows pet owners to:
 - Schedule automatic feeding times
@@ -11,7 +11,7 @@ The Smart Pet Feeder is a comprehensive solution for automated pet feeding that 
 - Track feeding history and analytics
 - Manually dispense food remotely via mobile app
 
-## 🏗️ System Architecture
+## System Architecture
 
 ### Components
 - **Mobile App** (Flutter): Cross-platform app for iOS, Android, and Web
@@ -21,24 +21,13 @@ The Smart Pet Feeder is a comprehensive solution for automated pet feeding that 
 
 ### Hardware Components
 - ESP32 microcontroller
-- HC-SR04 ultrasonic sensor (food level detection)
-- Active IR sensor (pet detection)
-- DHT11 sensor (temperature/humidity monitoring)
-- Servo motor (food dispenser)
+- HC-SR04 ultrasonic sensor
+- Active IR sensor
+- DHT11 sensor
+- SG90 Servo motor
 - LED and button for manual control
 
-## ✨ Features
-
-- **Automated Scheduling**: Set multiple daily feeding times
-- **Real-time Monitoring**: Live updates on food levels, temperature, and humidity
-- **Pet Detection**: IR sensor detects when your pet approaches the feeder
-- **Push Notifications**: Get alerts for low food, feeding events, and pet detection
-- **Feeding History**: Track all feeding events with timestamps and analytics
-- **Manual Feed**: Dispense food anytime via the app or physical button
-- **Daily Feeding Limits**: Set maximum daily feeding portions
-- **Analytics Dashboard**: Visualize feeding patterns and trends
-
-## 🚀 Getting Started
+## To start
 
 ### Prerequisites
 
@@ -84,7 +73,7 @@ flutter run
 2. Configure WiFi and MQTT credentials in `hardware/main/secret.h`
 3. Upload `hardware/main/main.ino` to ESP32
 
-## 📱 Mobile App Screens
+## Mobile App Screens
 
 - **Login/Signup**: User authentication
 - **Dashboard**: Overview of feeder status, food level, and quick actions

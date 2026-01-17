@@ -15,10 +15,10 @@ class _PetSetupScreenState extends State<PetSetupScreen> {
   final _petNameController = TextEditingController();
   final _breedController = TextEditingController();
   
-  double _weight = 10.0; // kg
+  double _weight = 10.0; 
   int _mealsPerDay = 2;
-  int _age = 3; // years
-  String _ageCategory = 'Adult'; // Puppy, Adult, Senior
+  int _age = 3; 
+  String _ageCategory = 'Adult';
   
   double _calculatedDailyPortion = 0.0;
   double _portionPerMeal = 0.0;
@@ -37,19 +37,16 @@ class _PetSetupScreenState extends State<PetSetupScreen> {
   }
 
   void _calculatePortion() {
-    // Calculate recommended daily food portion based on weight, age, and activity
+    // Calculate recommended daily food portion
     double dailyPercentage;
     
     if (_age < 1) {
-      // Puppy (0-1 year): 3-4% of body weight
       dailyPercentage = 0.035;
       _ageCategory = 'Puppy';
     } else if (_age >= 1 && _age <= 7) {
-      // Adult (1-7 years): 2-3% of body weight
       dailyPercentage = 0.025;
       _ageCategory = 'Adult';
     } else {
-      // Senior (7+ years): 2-2.5% of body weight
       dailyPercentage = 0.0225;
       _ageCategory = 'Senior';
     }

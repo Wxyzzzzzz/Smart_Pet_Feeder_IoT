@@ -13,9 +13,9 @@ class NotificationService {
 
   // Thresholds for notifications
   static const double LOW_FOOD_THRESHOLD =
-      30.0; // Below 30% triggers notification
+      30.0; 
   static const double HIGH_MOISTURE_THRESHOLD =
-      80.0; // Above 60% triggers notification
+      80.0; 
 
   // Track notification states to avoid spam
   bool _lowFoodNotificationShown = false;
@@ -23,7 +23,7 @@ class NotificationService {
   DateTime? _lastLowFoodNotification;
   DateTime? _lastHighMoistureNotification;
 
-  // Cooldown period (in minutes) to avoid repeated notifications
+  // Cooldown period to avoid repeated notifications
   static const int NOTIFICATION_COOLDOWN_MINUTES = 30;
 
   /// Initialize notification service
@@ -57,7 +57,6 @@ class NotificationService {
       print('Notification service initialized successfully');
     } catch (e) {
       print('Error initializing notification service: $e');
-      // Don't throw - allow app to continue even if notifications fail
     }
   }
 
@@ -75,8 +74,6 @@ class NotificationService {
 
       print('Notification permission status: ${settings.authorizationStatus}');
 
-      // Android 13+ requires explicit notification permission
-      // Only request if we're on Android platform
       final androidPlugin =
           _localNotifications.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
@@ -86,7 +83,6 @@ class NotificationService {
       }
     } catch (e) {
       print('Error requesting notification permissions: $e');
-      // Don't throw - allow app to continue even if notifications fail
     }
   }
 
@@ -97,24 +93,20 @@ class NotificationService {
       String? token = await _firebaseMessaging.getToken();
       print('FCM Token: $token');
 
-      // Handle foreground messages
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         print('Received foreground message: ${message.messageId}');
         _handleFCMMessage(message);
       });
 
-      // Handle background messages
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
         print('Message opened app: ${message.messageId}');
         _handleFCMMessage(message);
       });
     } catch (e) {
       print('Error setting up Firebase Messaging: $e');
-      // FCM may not work on web, so just log and continue
     }
   }
 
-  /// Handle FCM message
   void _handleFCMMessage(RemoteMessage message) {
     if (message.notification != null) {
       showLocalNotification(
@@ -125,14 +117,12 @@ class NotificationService {
     }
   }
 
-  /// Handle notification tap
+  // Handle notification tap
   void _onNotificationTapped(NotificationResponse response) {
     print('Notification tapped: ${response.payload}');
-    // Navigate to relevant screen based on payload
-    // This can be expanded based on your needs
   }
 
-  /// Show local notification
+  // Local notification
   Future<void> showLocalNotification({
     required String title,
     required String body,
@@ -168,7 +158,7 @@ class NotificationService {
     );
   }
 
-  /// Check if cooldown period has passed
+  // Check if cooldown period has passed
   bool _canShowNotification(DateTime? lastNotification) {
     if (lastNotification == null) return true;
     final now = DateTime.now();
@@ -176,7 +166,7 @@ class NotificationService {
     return difference.inMinutes >= NOTIFICATION_COOLDOWN_MINUTES;
   }
 
-  /// Monitor food level and show notification if low
+  // Monitor food level and show notification if low
   Future<void> checkFoodLevel(double foodPercentage) async {
     if (foodPercentage <= LOW_FOOD_THRESHOLD) {
       if (!_lowFoodNotificationShown ||
@@ -197,7 +187,7 @@ class NotificationService {
     }
   }
 
-  /// Show notification when scheduled feeding occurs
+  // Show notification when scheduled feeding occurs
   Future<void> notifyScheduledFeed({
     required String scheduleName,
     required double portionSize,
@@ -211,11 +201,9 @@ class NotificationService {
       payload: 'scheduled_feed',
     );
 
-    // Also check if food is low after feeding
     await checkFoodLevel(foodRemaining);
   }
 
-  /// Show notification when manual feeding occurs
   Future<void> notifyManualFeed({
     required double portionSize,
     required double foodRemaining,
@@ -232,7 +220,7 @@ class NotificationService {
     await checkFoodLevel(foodRemaining);
   }
 
-  /// Monitor moisture level and show warning if high
+  // Monitor moisture level and show warning if high
   Future<void> checkMoistureLevel(double moisturePercentage) async {
     if (moisturePercentage >= HIGH_MOISTURE_THRESHOLD) {
       if (!_highMoistureNotificationShown ||
@@ -253,7 +241,7 @@ class NotificationService {
     }
   }
 
-  /// Show pop-up dialog for immediate alerts (in-app)
+  // Immediate alert
   void showInAppAlert({
     required BuildContext context,
     required String title,
@@ -282,7 +270,7 @@ class NotificationService {
     );
   }
 
-  /// Reset all notification states (useful for testing or manual reset)
+  // Reset notification states
   void resetNotificationStates() {
     _lowFoodNotificationShown = false;
     _highMoistureNotificationShown = false;
@@ -291,7 +279,6 @@ class NotificationService {
   }
 }
 
-// Navigation service for global context access
 class NavigationService {
   static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 }

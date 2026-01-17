@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 
 class Routine {
   final String? id;
-  final String time; // Format: "HH:MM" (24-hour)
-  final int portionSize; // in grams
-  final List<int> days; // 0=Monday, 6=Sunday
+  final String time; 
+  final int portionSize; 
+  final List<int> days; 
   final bool enabled;
 
   Routine({
@@ -37,14 +37,14 @@ class Routine {
     };
   }
 
-  // Helper: Convert TimeOfDay to HH:MM string
+  // Convert Time
   static String timeOfDayToString(TimeOfDay time) {
     final hour = time.hour.toString().padLeft(2, '0');
     final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
 
-  // Helper: Convert HH:MM string to TimeOfDay
+  // Convert Time String
   static TimeOfDay stringToTimeOfDay(String time) {
     final parts = time.split(':');
     return TimeOfDay(
@@ -53,18 +53,16 @@ class Routine {
     );
   }
 
-  // Helper: Get day name from day index
+  // Get day name 
   static String getDayName(int day) {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return days[day];
   }
 
-  // Helper: Get formatted days string (e.g., "Mon, Wed, Fri")
   String getFormattedDays() {
     if (days.length == 7) return 'Every day';
     if (days.isEmpty) return 'No days';
 
-    // Check for weekdays (0-4)
     if (days.length == 5 &&
         days.contains(0) &&
         days.contains(1) &&
@@ -74,7 +72,6 @@ class Routine {
       return 'Weekdays';
     }
 
-    // Check for weekends (5-6)
     if (days.length == 2 && days.contains(5) && days.contains(6)) {
       return 'Weekends';
     }
@@ -82,12 +79,10 @@ class Routine {
     return days.map((d) => getDayName(d)).join(', ');
   }
 
-  // Get TimeOfDay from time string
   TimeOfDay getTimeOfDay() {
     return stringToTimeOfDay(time);
   }
 
-  // Copy with method for updates
   Routine copyWith({
     String? id,
     String? time,

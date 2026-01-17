@@ -1,23 +1,3 @@
-/*
- * SmartPet Firmware (ESP32)
- * Connects to Google Cloud (via MQTT Bridge)
- * Reads: Ultrasonic, Active IR, DHT11
- * Controls: Servo Motor
- */
-
-/* 
-REQUIRED LIBRARY
-
-PubSubClient (by Nick O'Leary) - For MQTT.
-
-ESP32Servo (by Kevin Harrington) - For the Servo Motor.
-
-DHT sensor library (by Adafruit) - For the Temp sensor.
-
-ArduinoJson (by Benoit Blanchon) - To create the data payload easily.
-
-*/
-
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
@@ -26,7 +6,7 @@ ArduinoJson (by Benoit Blanchon) - To create the data payload easily.
 #include <ArduinoJson.h>
 #include "secret.h" 
 
-// --- 1. PIN DEFINITIONS ---
+// --- PIN DEFINITIONS ---
 #define SERVO_PIN 13
 #define TRIG_PIN 27
 #define ECHO_PIN 26
@@ -35,7 +15,7 @@ ArduinoJson (by Benoit Blanchon) - To create the data payload easily.
 #define BUTTON_PIN 14
 #define LED_PIN 15
 
-// --- 2. GLOBAL OBJECTS ---
+// --- GLOBAL OBJECTS ---
 DHT dht(DHT_PIN, DHT11);
 Servo feederServo;
 
@@ -45,15 +25,12 @@ PubSubClient client(secureClient);
 // WiFiClient espClient;
 // PubSubClient client(espClient);
 
-// --- 3. TIMING VARIABLES ---
+// --- TIMING VARIABLES ---
 unsigned long lastTelemetryTime = 0;
-const long telemetryInterval = 10000; // Send data every 10 seconds
+const long telemetryInterval = 10000;
 
-// ================================================================
-//                      SENSOR FUNCTIONS
-// ================================================================
-
-// Function to read Ultrasonic Sensor and convert to %
+// --- FUNCTIONS ---
+// Ultrasonic Sensor
 int getFoodLevel() {
   digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
@@ -67,22 +44,19 @@ int getFoodLevel() {
   Serial.printf("Ultrasonic sensor: Length %d cm\n", distanceCm);
   
   // Assume box height is 10 cm
-  // 10 cm = empty
-  // 2 cm = full
   int maxDepth = 10; 
   int minDepth = 1;
   
   int percentage = map(distanceCm, maxDepth, minDepth, 0, 100);
 
-  return constrain(percentage, 0, 100); // Keep result between 0-100
+  return constrain(percentage, 0, 100); 
 }
 
-// Function to move the Servo
+// Servo Motor Control
 void dispenseFood(String source) {
   Serial.println("--------------------------------");
   Serial.printf("STATUS: Feeding %s\n", source.c_str());
   
-  // Servo action
   feederServo.attach(SERVO_PIN); 
   feederServo.write(180);
   delay(3000); 
@@ -90,7 +64,6 @@ void dispenseFood(String source) {
   delay(500);
   feederServo.detach();
 
-  // JSON Payload
   StaticJsonDocument<200> doc;
   doc["device_id"] = DEVICE_ID;
   doc["type"]      = "FEEDING_COMPLETE";
@@ -109,11 +82,7 @@ void dispenseFood(String source) {
   Serial.println("--------------------------------");
 }
 
-// ================================================================
-//                      MQTT FUNCTIONS
-// ================================================================
-
-// Callback: Runs when a message arrives on subscribed topic
+// --- MQTT Functions ---
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
@@ -135,18 +104,15 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 // Reconnect Loop
 void reconnect() {
-  // Loop until we're reconnected
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     
-    // Create a random client ID so multiple devices don't clash
     String clientId = "ESP32Client-";
     clientId += String(random(0xffff), HEX);
     
-    // Attempt to connect
     if (client.connect(clientId.c_str(), MQTT_USER, MQTT_PASS)) {
       Serial.println("connected");
-      // Once connected, resubscribe to the command topic
+
       client.subscribe(COMMAND_TOPIC);
     } else {
       Serial.print("failed, rc=");
@@ -157,13 +123,10 @@ void reconnect() {
   }
 }
 
-// ================================================================
-//                          MAIN SETUP
-// ================================================================
 void setup() {
   Serial.begin(9600);
 
-  // Hardware Initialization
+  // Hardware Initialize
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   pinMode(IR_PIN, INPUT);
@@ -171,7 +134,7 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   dht.begin();
   
-  // WiFi Connection
+  // WiFi Connect
   delay(10);
   Serial.println();
   Serial.print("Connecting to ");
@@ -189,23 +152,17 @@ void setup() {
 
   secureClient.setCACert(ca_cert);
   secureClient.setInsecure();
-  // client.setServer(MQTT_SERVER, 8883); // NOTE: TLS port
-  // client.setCallback(callback);
 
-  // MQTT Initialization
+  // MQTT Initialize
   client.setServer(MQTT_SERVER, MQTT_PORT);
   client.setCallback(callback);
 }
 
-// ================================================================
-//                          MAIN LOOP
-// ================================================================
 void loop() {
-  // 1. Ensure MQTT is connected
   if (!client.connected()) {
     reconnect();
   }
-  client.loop(); // Important: Checks for incoming messages
+  client.loop(); 
 
   // Pet detection
   if (digitalRead(IR_PIN) == LOW) {
@@ -218,31 +175,26 @@ void loop() {
   if (digitalRead(BUTTON_PIN) == LOW) {
     Serial.println("Manual feeding triggered");
     dispenseFood("MANUAL"); 
-    delay(500); // Simple debounce (prevents double triggering)
+    delay(500); 
   }
 
-  // 2. Non-Blocking Timer for Telemetry (Every 10 seconds)
+  // Every 10s, send telemetry
   unsigned long currentMillis = millis();
   if (currentMillis - lastTelemetryTime >= telemetryInterval) {
     lastTelemetryTime = currentMillis;
 
-    // --- READ SENSORS ---
     int foodLevel = getFoodLevel();
     float temp = dht.readTemperature();
     float humidity = dht.readHumidity();
-    
-    // IR Sensor: LOW = pet coming
     bool detected = (digitalRead(IR_PIN) == LOW); 
 
-    // Error handling for DHT
+    // Error handling 
     if (isnan(temp) || isnan(humidity)) {
       Serial.println("Failed to read from DHT sensor!");
       temp = 0;
       humidity = 0;
     }
 
-    // --- PREPARE JSON ---
-    // Capacity 256 bytes is enough for this data
     StaticJsonDocument<256> doc;
     doc["device_id"] = DEVICE_ID;
     doc["food_level"] = foodLevel;
@@ -253,10 +205,8 @@ void loop() {
     char jsonBuffer[512];
     serializeJson(doc, jsonBuffer);
 
-    // --- PUBLISH TO MQTT ---
     client.publish(TELEMETRY_TOPIC, jsonBuffer);
     
-    // Debug Print
     Serial.print("Sent Telemetry: ");
     Serial.println(jsonBuffer);
   }
